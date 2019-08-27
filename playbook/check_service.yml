@@ -1,0 +1,10 @@
+- hosts: hz8
+  remote_user: root
+
+  tasks:
+  - name: Check if Docker is installed
+    command: systemctl status docker
+    register: docker_check
+    ignore_errors: yes
+
+

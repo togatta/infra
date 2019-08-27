@@ -1,0 +1,97 @@
+- hosts: hz8
+  remote_user: root
+
+  tasks:
+
+  - name: Add Docker repo
+    get_url:
+     url: https://download.docker.com/linux/centos/docker-ce.repo
+     dest: /etc/yum.repos.d/docker-ce.repo
+    become: yes
+
+  - name: Download repo virtualbox
+    get_url:
+     url: http://download.virtualbox.org/virtualbox/rpm/rhel/virtualbox.repo
+     dest: /etc/yum.repos.d/virtualbox.repo
+    become: yes
+
+  - name: install dependencies
+    yum:
+     name: "{{ packages }}"
+    vars:
+     packages: 
+       - yum-utils
+       - device-mapper-persistent-data
+       - lvm2
+       - docker-ce
+     state: present
+
+  - name: remove vbox5.1
+    yum:
+      name:  "{{ packages }}"
+      state: absent
+    vars:
+     packages:
+      - VirtualBox-5.1
+
+  - name: install dependencies virtualbox
+    yum:
+     name: "{{ packages }}"
+    vars:
+     packages:
+      - epel-release
+      - gcc
+      - make
+      - patch
+      - dkms
+      - qt
+      - libgomp
+      - kernel-headers
+      - kernel-devel
+      - fontforge
+      - binutils
+      - glibc-headers
+      - glibc-devel
+      - VirtualBox-6.0
+
+  - name: Upgrade all packages
+    yum: name=* state=latest
+
+  - name: Enable the Docker daemon in systemd
+    systemd:
+     name: docker
+     enabled: yes
+     masked: no
+
+  - name: Start the Docker daemon
+    systemd:
+     name: docker
+     state: started
+     masked: no
+
+  - name: Check if Docker Compose is installed
+    command: docker-compose --version
+    register: docker_compose_check
+    ignore_errors: yes
+
+  - name: Download and install Docker Compose
+    get_url:
+     url: https://github.com/docker/compose/releases/download/1.24.1/docker-compose-Linux-x86_64
+     dest: /usr/bin/docker-compose
+     mode: 0755
+    when:
+        - docker_compose_check.msg is defined
+        - docker_compose_check.msg.find('No such file or directory') != -1
+
+  - name: download vagrant
+    get_url:
+     url: https://releases.hashicorp.com/vagrant/2.2.5/vagrant_2.2.5_x86_64.rpm
+     dest: /opt/vagrant_2.2.5_x86_64.rpm
+
+  - name: install vagrant
+    command: yum -y localinstall /opt/vagrant_2.2.5_x86_64.rpm
+    register: install_vagrant_check
+    ignore_errors: yes
+
+  - name: reboot vm
+    reboot:
