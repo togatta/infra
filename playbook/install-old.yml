@@ -9,11 +9,10 @@
      dest: /etc/yum.repos.d/docker-ce.repo
     become: yes
 
-  - name: Download installer bitnami hadoop
+  - name: Download repo virtualbox
     get_url:
-     url: https://bitnami.com/redirect/to/679873/bitnami-hadoop-3.2.0-7-linux-x64-installer.run
-     dest: /opt/
-     mode: +x
+     url: http://download.virtualbox.org/virtualbox/rpm/rhel/virtualbox.repo
+     dest: /etc/yum.repos.d/virtualbox.repo
     become: yes
 
   - name: install dependencies
@@ -26,6 +25,14 @@
        - lvm2
        - docker-ce
      state: present
+
+  - name: remove vbox5.1
+    yum:
+      name:  "{{ packages }}"
+      state: absent
+    vars:
+     packages:
+      - VirtualBox-5.1
 
   - name: install dependencies virtualbox
     yum:
@@ -45,8 +52,7 @@
       - binutils
       - glibc-headers
       - glibc-devel
-      - git
-      - unzip
+      - VirtualBox-6.0
 
   - name: Upgrade all packages
     yum: name=* state=latest
@@ -77,39 +83,15 @@
         - docker_compose_check.msg is defined
         - docker_compose_check.msg.find('No such file or directory') != -1
 
-#  - name: install bitnami hadoop
-#   command: ./opt/./bitnami-hadoop-3.2.0-7-linux-x64-installer.run << 'EOF'
-#            /opt/bitnami
-#            admin
-#            minda
-#            minda
-#            y
-#            \n
-#            EOF
-#   register: bitnami_hadoop_check
-#   ignore_errors: yes
+  - name: download vagrant
+    get_url:
+     url: https://releases.hashicorp.com/vagrant/2.2.5/vagrant_2.2.5_x86_64.rpm
+     dest: /opt/vagrant_2.2.5_x86_64.rpm
 
-  - name: install postgres
-    yum: 
-     name: "{{ packages }}"
-    vars:
-     packages:
-      - postgresql-server
-      - postgresql-contrib
-
-  - name: postgres init
-    command: postgresql-setup initdb
-    register: postgresql_init_check
+  - name: install vagrant
+    command: yum -y localinstall /opt/vagrant_2.2.5_x86_64.rpm
+    register: install_vagrant_check
     ignore_errors: yes
 
-  - name: start postgres
-    command: systemctl start postgresql
-    register: postgresql_start_check
-    ignore_errors: yes
-
-  
-  - name: download and  unzip livy
-    unarchive: 
-     src: https://www.apache.org/dyn/closer.lua/incubator/livy/0.6.0-incubating/apache-livy-0.6.0-incubating-bin.zip
-     dest: /opt
-     remote_src: yes
+  - name: reboot vm
+    reboot:
